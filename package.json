@@ -1,0 +1,32 @@
+{
+  "name": "create-mcpb",
+  "version": "1.2.8",
+  "description": "Minimal scaffolder for Claude Desktop MCP Bundles (.mcpb). Unlike `mcpb init`, it does not force you to list every tool — it sets tools_generated:true so Claude discovers tools at runtime.",
+  "bin": {
+    "create-mcpb": "bin/create-mcpb.js"
+  },
+  "main": "lib/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "mcpb",
+    "claude",
+    "claude-desktop",
+    "scaffold",
+    "generator",
+    "cli"
+  ],
+  "author": "Perplexity Computer",
+  "license": "MIT",
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node bin/create-mcpb.js"
+  }
+}
