@@ -1,180 +1,208 @@
 # create-mcpb
 
-A minimal scaffolder for **Claude Desktop MCP Bundles** (`.mcpb`) that never asks you how many tools your server has.
+เครื่องมือสร้าง **Claude Desktop Extension** (`.mcpb`) สำหรับเชื่อมต่อ MCP server โดยไม่ต้องเขียนโค้ด
+A no-code tool for creating **Claude Desktop Extensions** (`.mcpb`) that connect to MCP servers.
 
-The official `mcpb init` from `@anthropic-ai/mcpb` forces you to enumerate every tool and prompt up front, which is noise — the tool list lives in your server code and Claude Desktop discovers it via the MCP handshake at runtime. `create-mcpb` just sets `tools_generated: true` and `prompts_generated: true` and moves on.
+รองรับ remote MCP server ผ่าน SSE หรือ Streamable HTTP และยังคงทำงานหลังปิด-เปิด Claude Desktop
+Supports remote MCP servers via SSE or Streamable HTTP, and keeps working after Claude Desktop restart.
 
-## Install
+---
+
+## ภาษาไทย (สำหรับผู้ใช้งาน)
+
+### สิ่งที่ต้องมี
+
+- macOS พร้อม Homebrew Node (`/opt/homebrew/bin/node`)
+- Claude Desktop ติดตั้งแล้ว
+- ไฟล์ `create-mcpb-1.2.8.tar` (ดาวน์โหลดจาก [Releases](https://github.com/aekanun2020/create-mcpb/releases))
+
+ตรวจ Node:
+```bash
+which node
+```
+ต้องเห็น `/opt/homebrew/bin/node` หรือ `/usr/local/bin/node`
+
+### ติดตั้ง create-mcpb
+
+วางไฟล์ `.tar` ไว้ใน `~/Downloads` แล้วรัน:
+```bash
+cd ~ && npm install -g ~/Downloads/create-mcpb-1.2.8.tar
+```
+
+> **ห้าม** เปลี่ยนนามสกุลไฟล์เป็น `.tgz` เพราะ Safari/iCloud อาจทำให้ไฟล์เสีย ให้ใช้ `.tar` ตรงๆ
+
+ตรวจว่าลงสำเร็จ:
+```bash
+which create-mcpb
+```
+
+### สร้าง Extension
+
+แต่ละ extension ต้องอยู่คนละโฟลเดอร์ และตั้ง **slug ไม่ซ้ำกัน** (ถ้า slug ซ้ำ ตัวใหม่จะทับตัวเก่า)
+
+#### ตัวอย่างที่ 1: SSE (เช่น modbus-plc-collector)
 
 ```bash
-# one-shot
-npx create-mcpb my-extension
-
-# or global
-npm install -g create-mcpb
-create-mcpb my-extension
+mkdir -p ~/Downloads/modbus-ext
+cd ~/Downloads/modbus-ext
+create-mcpb . --transport sse
 ```
+ตอบ prompt:
+- **slug**: `modbus`
+- **Server URL**: `http://192.168.1.123:8001/sse`
+- **Author name**: `Aekanun`
+- อื่นๆ: กด Enter
 
-Node.js 18 or newer. Zero runtime dependencies.
+Pack + ติดตั้ง:
+```bash
+npx -y @anthropic-ai/mcpb pack . modbus-1.0.0.mcpb
+open modbus-1.0.0.mcpb
+```
+Claude Desktop จะเด้งหน้าต่าง Install → กด Install
 
-## Usage
+#### ตัวอย่างที่ 2: Streamable HTTP (เช่น office-creator)
 
 ```bash
-create-mcpb [directory] [options]
+mkdir -p ~/Downloads/office-ext
+cd ~/Downloads/office-ext
+create-mcpb . --transport http
 ```
-
-### Options
-
-| Flag                   | Effect                                                        |
-| ---------------------- | ------------------------------------------------------------- |
-| `--transport <type>`   | `stdio` · `sse` · `http` (skip the transport prompt)          |
-| `--name <slug>`        | Pre-set the extension slug                                    |
-| `--quick`, `--yes`, `-y` | Accept sensible defaults; ask only the essentials            |
-| `--help`, `-h`         | Show help                                                     |
-
-### Example — local binary server
+ตอบ prompt:
+- **slug**: `office`
+- **Server URL**: `http://192.168.1.123:8200/mcp`
+- **Author name**: `Aekanun`
 
 ```bash
-create-mcpb my-binary-mcp --transport stdio
+npx -y @anthropic-ai/mcpb pack . office-1.0.0.mcpb
+open office-1.0.0.mcpb
 ```
 
-```
-? Extension slug (lowercase, a-z 0-9 -) (my-binary-mcp)
-? Display name (My Binary Mcp) My Binary MCP
-? One-line description (My Binary MCP MCP server) A fast local MCP server
-? Version (semver) (1.0.0)
-? Author name Jane Doe
-? Author email (optional)
-? License (MIT)
-? Path to the server executable inside the bundle (bin/server)
-? Extra CLI args (space-separated, optional)
-? Platforms (comma-separated: darwin,win32,linux) (darwin,win32,linux)
-? Add any user-config fields (API keys, directories, toggles)? [y/N]
+### ทดสอบ restart (สำคัญ)
 
-✓ Scaffolded my-binary-mcp@1.0.0
+ปิด-เปิด Claude Desktop แล้วลองใช้ tool อีกครั้ง — ถ้ายังทำงานได้ = ใช้งานได้จริง
+```bash
+osascript -e 'quit app "Claude"'; sleep 3; killall Claude 2>/dev/null; sleep 2; open -a Claude
 ```
 
-That produces:
+### ถอนการติดตั้ง
 
-```
-my-binary-mcp/
-├─ manifest.json          # tools_generated:true, server.type:"binary"
-├─ bin/server             # placeholder executable stub (chmod +x)
-├─ .mcpbignore
-└─ README.md
+**ผ่าน Claude Desktop:** Settings → Extensions → เลือก → Uninstall
+
+**แบบ manual (กรณีลบไม่ขาด):**
+```bash
+rm -rf ~/Library/Application\ Support/Claude/Claude\ Extensions/local.mcpb.<author>.<slug>
 ```
 
-### Example — remote server (SSE / streamable HTTP)
+### ปัญหาที่เคยเจอ
+
+**1. Extension พังทันที 0.1 วินาทีหลังเปิด Claude**
+เคยเจอใน v1.2.7 และเก่ากว่า — **v1.2.8 แก้ไปแล้ว** โดยฝัง `/opt/homebrew/bin/node` ลง manifest ถ้ายังเจอ แสดงว่าใช้เวอร์ชันเก่า ให้ upgrade + re-scaffold ใหม่
+
+**2. ติดตั้ง .mcpb ใหม่ทับของเก่า**
+เพราะ slug ซ้ำกัน (default เป็น `my-extension` ทุกครั้ง) — แก้โดยตั้ง slug ให้ต่างกัน
+
+**3. iCloud Drive ทำให้ extension ใช้ไม่ได้**
+iCloud root มี `package.json` ที่กำหนด `"type": "module"` ทำให้ไฟล์ `.cjs` เพี้ยน — scaffold นอก iCloud เช่น `~/Downloads/`
+
+**4. ติดตั้ง .tar ไม่ได้**
+Safari/iCloud บางครั้ง strip `.gz` — **ห้าม** rename เป็น `.tgz` ให้ใช้ `.tar` ตรงๆ
+
+---
+
+## English (for end users)
+
+### Requirements
+
+- macOS with Homebrew Node (`/opt/homebrew/bin/node`)
+- Claude Desktop installed
+- `create-mcpb-1.2.8.tar` (download from [Releases](https://github.com/aekanun2020/create-mcpb/releases))
+
+### Install create-mcpb
 
 ```bash
-create-mcpb my-remote-mcp --transport http
+cd ~ && npm install -g ~/Downloads/create-mcpb-1.2.8.tar
 ```
 
-You'll be asked for the server URL and (optionally) custom HTTP headers — use `${user_config.KEY}` to reference user-configurable fields like API keys.
+> **Do not** rename the file to `.tgz` — Safari/iCloud may have stripped the `.gz` and renaming breaks the install. Install the `.tar` file as-is.
 
-### Example — quick mode
+### Create an Extension
+
+Each extension needs its own folder and a **unique slug** — installing a new `.mcpb` with the same slug overwrites the old one.
+
+#### Example 1 — SSE remote server
 
 ```bash
-create-mcpb my-extension --transport stdio -y
+mkdir -p ~/Downloads/my-ext && cd ~/Downloads/my-ext
+create-mcpb . --transport sse
+# slug: my-ext
+# URL:  https://your-server/sse
+# author: your name
+npx -y @anthropic-ai/mcpb pack . my-ext-1.0.0.mcpb
+open my-ext-1.0.0.mcpb
 ```
 
-Skips version/author/license/platforms/user_config prompts and uses defaults. Only the entry-point path is asked.
-
-### User-config fields
-
-When you answer "yes" to adding user-config fields, you'll be prompted once per field for:
-
-- Key (snake_case)
-- Type (`string`, `directory`, `file`, `boolean`, `number`)
-- Title, description, required?, sensitive?, multiple?
-
-Each field is auto-wired to an env var by default: key `api_key` becomes `API_KEY=${user_config.api_key}` in `server.mcp_config.env`. Edit `manifest.json` afterwards if you want different wiring.
-
-## Why not `mcpb init`?
-
-`mcpb init` asks you to list every tool and prompt in the manifest. That's duplicate bookkeeping — MCP servers advertise their tools over the protocol at startup. `create-mcpb` sets:
-
-```json
-{
-  "tools_generated": true,
-  "prompts_generated": true
-}
-```
-
-so Claude Desktop introspects at runtime. You only maintain the tool list in one place: your server code.
-
-## What it generates
-
-### stdio (binary)
-
-```json
-{
-  "manifest_version": "0.3",
-  "server": {
-    "type": "binary",
-    "entry_point": "bin/server",
-    "mcp_config": {
-      "command": "${__dirname}/bin/server",
-      "args": []
-    }
-  },
-  "tools_generated": true,
-  "prompts_generated": true,
-  "compatibility": {
-    "claude_desktop": ">=0.11.0",
-    "platforms": ["darwin", "win32", "linux"]
-  }
-}
-```
-
-### streamable http / sse
-
-```json
-{
-  "server": {
-    "type": "http",
-    "mcp_config": {
-      "url": "https://api.example.com/mcp",
-      "headers": { "Authorization": "Bearer ${user_config.api_key}" }
-    }
-  }
-}
-```
-
-## Next steps after scaffolding
+#### Example 2 — Streamable HTTP
 
 ```bash
-cd my-extension
-# (stdio) drop your real executable at bin/server
-npx -y @anthropic-ai/mcpb pack . my-extension-1.0.0.mcpb
-# double-click the .mcpb to install in Claude Desktop
+mkdir -p ~/Downloads/my-ext && cd ~/Downloads/my-ext
+create-mcpb . --transport http
+# slug: my-ext
+# URL:  https://your-server/mcp
+npx -y @anthropic-ai/mcpb pack . my-ext-1.0.0.mcpb
+open my-ext-1.0.0.mcpb
 ```
+
+### Verify restart resilience
+
+```bash
+osascript -e 'quit app "Claude"'; sleep 3; killall Claude 2>/dev/null; sleep 2; open -a Claude
+```
+Open Claude again and invoke a tool — it should still work.
+
+### Uninstall
+
+**From Claude Desktop:** Settings → Extensions → Uninstall
+
+**Manual (if the above doesn't clean up):**
+```bash
+rm -rf ~/Library/Application\ Support/Claude/Claude\ Extensions/local.mcpb.<author>.<slug>
+```
+
+### Troubleshooting
+
+**Extension fails 0.1s after Claude restart** — fixed in v1.2.8 (absolute node path baked into manifest). If you still see this, you're on an older version. Upgrade and re-scaffold.
+
+**New install overwrites old extension** — slug collision. Give each extension a unique slug.
+
+**iCloud Drive breaks extensions** — iCloud root contains a `package.json` with `"type": "module"` that corrupts `.cjs` loading. Scaffold outside iCloud (e.g. `~/Downloads/`).
+
+**`.tar` install fails** — do not rename to `.tgz`. Install the `.tar` as-is.
+
+---
+
+## Verified working
+
+Verified on macOS 14, Claude Desktop with Node v24.14.0, against the following remote servers:
+
+- Modbus PLC collector (SSE, FastMCP)
+- Office Creator (Streamable HTTP)
+
+Both survived Claude Desktop restart after the v1.2.8 fix.
+
+---
 
 ## Changelog
 
-### 1.2.8
-- Bake absolute `node` path into `manifest.mcp_config.command` at scaffold time (detected via `which node`). Fixes extensions silently failing 0.1s after Claude Desktop restart on macOS, where the UtilityProcess launcher uses a trimmed PATH and bare `node` resolves to `env: node: No such file or directory`.
+- **1.2.8** — Bake absolute `node` path into manifest at scaffold time. Fixes extensions failing 0.1s after Claude Desktop restart on macOS (trimmed PATH in UtilityProcess).
+- **1.2.7** — Bridge writes one JSON object per stdout call (Claude parser treats each write as one JSON-RPC message).
+- **1.2.5–1.2.6** — NDJSON reframer for servers that emit glued/partial JSON.
+- **1.2.4** — Removed `{ end: false }` from stdout pipe (caused shutdown hang).
+- **1.2.3** — `process.stdin.pipe(child.stdin, { end: false })` so stdin close from Claude doesn't kill the child.
+- **1.2.2** — Explicit `stdio: ['pipe','pipe','pipe']` for bridge child process.
+- **1.2.1** — Auto-detect `NPX_PATH` via `which npx` (same pattern as 1.2.8 for node).
+- **1.2.0** — Bridge file uses `.cjs` extension to run as CommonJS even when ancestor directory has `"type": "module"` (iCloud ESM contamination).
 
-### 1.2.7
-- Remote-MCP bridge writes one JSON object per `process.stdout.write` call. Claude Desktop's stdio parser treats one write = one JSON-RPC message, so batched NDJSON was being rejected as invalid.
-
-### 1.2.5 – 1.2.6
-- NDJSON reframer for remote servers that send glued or partial JSON payloads (e.g. FastMCP SSE).
-
-### 1.2.4
-- Removed `{ end: false }` from stdout pipe (caused hang on server shutdown).
-
-### 1.2.3
-- `process.stdin.pipe(child.stdin, { end: false })` so closing stdin from Claude doesn't kill the child prematurely.
-
-### 1.2.2
-- Explicit `stdio: ['pipe','pipe','pipe']` for the bridge child process.
-
-### 1.2.1
-- Auto-detect `NPX_PATH` via `which npx` and bake into the bridge (same root cause as 1.2.8, for npx).
-
-### 1.2.0
-- Bridge file is `.cjs` so it runs as CommonJS even when an ancestor directory (e.g. iCloud Drive root) has `"type": "module"`.
+---
 
 ## License
 
